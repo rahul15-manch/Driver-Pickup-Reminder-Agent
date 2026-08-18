@@ -140,3 +140,20 @@ def mark_reminder_sent(row_index: int, call_sid: str) -> bool:
     except Exception as e:
         logger.error(f"Failed to record reminder state: {e}")
         return False
+
+def find_ride_by_call_sid(call_sid: str) -> dict | None:
+    """Finds a ride from Google Sheets by its Twilio Call SID."""
+    if not call_sid:
+        return None
+    
+    rides = get_rides()
+    for ride in rides:
+        if ride.get("call_sid") == call_sid:
+            return ride
+    return None
+
+def update_call_status(row_index: int, call_status: str) -> bool:
+    """Updates the call_status column for a specific ride."""
+    if not row_index or not call_status:
+        return False
+    return update_ride_status(row_index, call_status, column_name="call_status")
