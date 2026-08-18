@@ -5,7 +5,8 @@ from app.config import (
     TWILIO_ACCOUNT_SID,
     TWILIO_AUTH_TOKEN,
     TWILIO_PHONE_NUMBER,
-    TEST_PHONE_NUMBER
+    TEST_PHONE_NUMBER,
+    MOCK_TWILIO
 )
 
 logger = logging.getLogger(__name__)
@@ -21,12 +22,13 @@ def get_twilio_client():
         logger.error(f"Failed to initialize Twilio client: {e}")
         return None
 
-def make_test_call(phone_number: str) -> str | None:
+def make_call(phone_number: str, message: str) -> str | None:
     """
-    Initiates an outbound test call playing a static TTS message.
+    Initiates an outbound call playing a dynamic TTS message.
     
     Args:
         phone_number (str): The destination phone number in E.164 format.
+        message (str): The reminder text to be spoken.
         
     Returns:
         str | None: The Call SID if successful, None otherwise.
@@ -34,6 +36,15 @@ def make_test_call(phone_number: str) -> str | None:
     if not phone_number:
         logger.error("Phone number is required to make a call.")
         return None
+        
+    if not message:
+        logger.error("Message is required to make a call.")
+        return None
+        
+    if MOCK_TWILIO:
+        logger.info(f"[MOCK] Calling {phone_number}")
+        logger.info(f"[MOCK] Message: {message}")
+        return "MOCK_SID_12345"
         
     if not TWILIO_PHONE_NUMBER:
         logger.error("TWILIO_PHONE_NUMBER is missing from configuration.")
@@ -43,15 +54,9 @@ def make_test_call(phone_number: str) -> str | None:
     if not client:
         return None
 
-    twiml_message = """
+    twiml_message = f"""
         <Response>
-            <Say>
-                Hello. This is a test call from the Driver Pickup Reminder Agent.
-                This is a pickup reminder.
-                Please contact the customer to confirm the pickup
-                and make sure you reach the pickup location on time.
-                Thank you.
-            </Say>
+            <Say>{message}</Say>
         </Response>
     """
     
@@ -87,10 +92,13 @@ if __name__ == "__main__":
         logger.error("TEST_PHONE_NUMBER is not configured in .env.")
         print("Please configure TEST_PHONE_NUMBER (E.164 format, e.g., +1234567890) and run the test again.")
     else:
-        sid = make_test_call(TEST_PHONE_NUMBER)
+        test_msg = "Hello. This is a test call from the Driver Pickup Reminder Agent. Thank you."
+        sid = make_call(TEST_PHONE_NUMBER, test_msg)
         if sid:
-            print("\nSUCCESS: Twilio outbound call was initiated.")
+            if MOCK_TWILIO:
+                print("\nSUCCESS: Twilio outbound call was MOCKED.")
+            else:
+                print("\nSUCCESS: Twilio outbound call was initiated.")
             print(f"Call SID: {sid}")
-            print("Please verify if the physical test phone rang and the TTS message played.")
         else:
             print("\nFAILURE: Failed to initiate Twilio call. Check logs above.")
