@@ -8,6 +8,7 @@ load_dotenv()
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
 TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER")
+TEST_PHONE_NUMBER = os.getenv("TEST_PHONE_NUMBER")
 
 # Google Sheets Configuration
 GOOGLE_SHEET_ID = os.getenv("GOOGLE_SHEET_ID")
