@@ -2,7 +2,9 @@ import os
 import logging
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
-from app.config import GOOGLE_SHEET_ID, GOOGLE_CREDENTIALS_FILE, GOOGLE_SHEET_NAME
+from app.config import GOOGLE_SHEET_ID, GOOGLE_CREDENTIALS_FILE, GOOGLE_SHEET_NAME, TIMEZONE
+from datetime import datetime
+import pytz
 
 logger = logging.getLogger(__name__)
 
@@ -106,4 +108,35 @@ def update_ride_status(row_index, status, column_name="reminder_status"):
         return True
     except Exception as e:
         logger.error(f"Failed to update ride status: {e}")
+        return False
+
+def mark_reminder_sent(row_index: int, call_sid: str) -> bool:
+    """
+    Marks a ride as sent to prevent duplicate calls.
+    Updates reminder_status, call_sid, and reminder_sent_at.
+    """
+    if not row_index or not call_sid:
+        logger.error("row_index and call_sid are required to mark reminder as sent.")
+        return False
+        
+    try:
+        # Get current time in correct timezone
+        tz = pytz.timezone(TIMEZONE)
+        sent_at = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
+        
+        # We will reuse the existing update_ride_status sequentially.
+        # This makes 3 API calls which is fine for v1 scale.
+        status_updated = update_ride_status(row_index, "sent", column_name="reminder_status")
+        sid_updated = update_ride_status(row_index, call_sid, column_name="call_sid")
+        time_updated = update_ride_status(row_index, sent_at, column_name="reminder_sent_at")
+        
+        if status_updated and sid_updated and time_updated:
+            logger.info(f"Successfully recorded reminder state for row {row_index}")
+            return True
+        else:
+            logger.error(f"Partial update failure when marking row {row_index} as sent.")
+            return False
+            
+    except Exception as e:
+        logger.error(f"Failed to record reminder state: {e}")
         return False
