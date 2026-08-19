@@ -3,30 +3,37 @@
 The Driver Pickup Reminder Agent automatically checks scheduled rides from Google Sheets and reminds drivers approximately 30 minutes before pickup through a Twilio voice call. It ensures reliable, duplicate-free execution via a simplified local background scheduler.
 
 ## Architecture
+```mermaid
+flowchart TD
+    A[(Google Sheets)] --> B[Scheduler<br/>Every 60 Seconds]
 
-```text
-Google Sheets
-      ↓
-Scheduler
-      ↓
-Time Processor
-      ↓
-30-Minute Trigger
-      ↓
-Reminder Generator
-      ↓
-Twilio Voice
-      ↓
-Sheet Status Update
-```
+    B --> C[Read Scheduled Rides]
+    C --> D[Time Processor<br/>Asia/Kolkata]
 
-Webhook Integration:
-```text
-Twilio
-   ↓
-Status Webhook
-   ↓
-Google Sheets
+    D --> E{29–30 Minutes<br/>Before Pickup?}
+
+    E -->|No| F[Skip Ride]
+    E -->|Yes| G{Reminder Already Sent?}
+
+    G -->|Yes| F
+    G -->|No| H[Reminder Generator]
+
+    H --> I[Generate Dynamic<br/>Voice Message]
+
+    I --> J[Twilio Voice]
+
+    J --> K[Driver Phone]
+
+    J --> L[Call SID]
+
+    L --> M[Update Google Sheet<br/>reminder_status = sent]
+
+    M --> A
+
+    J -.-> N[Twilio Call Status]
+    N --> O[FastAPI Status Webhook]
+    O --> P[Update call_status]
+    P --> A
 ```
 
 ## Features
@@ -40,14 +47,14 @@ Google Sheets
 - **Error Handling:** Robust exception boundaries guarantee the master scheduler sequence continues firing cleanly upon external API outages.
 
 ## Tech Stack
-- Python
-- FastAPI
-- Google Sheets API
-- Twilio
-- pytz
-- python-dotenv
-- pytest
 
+![Python](https://img.shields.io/badge/Python-3.x-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.1x-009688?logo=fastapi&logoColor=white)
+![Google Sheets API](https://img.shields.io/badge/Google%20Sheets%20API-4285F4?logo=google-sheets&logoColor=white)
+![Twilio](https://img.shields.io/badge/Twilio-F22F46?logo=twilio&logoColor=white)
+![pytz](https://img.shields.io/badge/pytz-Timezone-orange)
+![python-dotenv](https://img.shields.io/badge/python--dotenv-Environment%20Config-green)
+![pytest](https://img.shields.io/badge/pytest-Testing-0A9EDC?logo=pytest&logoColor=white)
 ## Google Sheet Format
 Ensure your connected Google Sheet contains the following exact headers for compatibility:
 ```text
@@ -77,7 +84,6 @@ STATUS_CALLBACK_URL=
 TEST_PHONE_NUMBER=
 MOCK_TWILIO=true
 ```
-*Never commit your actual `.env` file or Google service credentials to version control.*
 
 ## Setup
 ```bash
@@ -130,12 +136,20 @@ The following architectures were explicitly omitted from the scope of v1 to keep
 - **Missing Reliability Locking:** State mutations operate sequentially. A network outage midway could leave `call_sid` orphaned from a successful Twilio hook. 
 - **No Production Secrets Protection:** Twilio Webhook Request Validation algorithms are bypassed in v1. 
 
-**Recommended V2 Enhancements:**
-- Live driver location & GPS polling.
-- ETA-based dynamic reminders.
-- Retry & Escalation routing.
-- SMS fallback channels.
-- Database locking & Postgres migration.
-- Fully distributed locks & messaging queues (RabbitMQ/Celery).
-- Better webhook authentication.
-- Admin portal dashboards.
+## V2 Roadmap
+
+The current implementation intentionally keeps the system lightweight and focused on
+the core reminder workflow. With additional development time, the following
+improvements could make it more reliable, scalable, and operationally useful.
+
+| Area | Enhancement | Benefit |
+|---|---|---|
+| 📍 **Driver Tracking** | Live GPS & location polling | Detect whether the driver is actually moving toward the pickup location |
+| 🕐 **Smart Reminders** | ETA-based reminder timing | Trigger reminders based on actual arrival estimates instead of a fixed 30-minute window |
+| 🔄 **Reliability** | Retry & escalation workflow | Automatically retry failed calls and notify the fleet manager when necessary |
+| 📱 **Communication** | SMS fallback | Send the reminder through SMS when a voice call is unanswered or fails |
+| 🗄️ **Data Layer** | PostgreSQL-backed state management | Provide more reliable persistence and structured ride/call history |
+| 🔒 **Concurrency** | Database/distributed locking | Prevent duplicate reminders when multiple scheduler instances run simultaneously |
+| ⚙️ **Scalability** | Task queues with Celery/RabbitMQ | Support higher ride volumes and distributed background processing |
+| 🔐 **Security** | Twilio webhook signature validation | Ensure status callbacks genuinely originate from Twilio |
+| 📊 **Operations** | Admin dashboard | Give fleet managers visibility into rides, reminders, call outcomes, and failures |
