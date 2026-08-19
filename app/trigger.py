@@ -32,8 +32,8 @@ def find_eligible_rides(rides: List[dict]) -> List[dict]:
             if minutes_until is None:
                 continue
                 
-            # 3. Check 30-minute window (29-30 mins)
-            is_in_time_window = 29 <= minutes_until <= 30
+            # 3. Check 30-minute window (29-30 mins) - updated to 0-30 for testing
+            is_in_time_window = 0 <= minutes_until <= 30
             
             # 4. Check reminder status
             # Treat empty/missing as 'pending'

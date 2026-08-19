@@ -41,6 +41,10 @@ def make_call(phone_number: str, message: str) -> str | None:
         logger.error("Message is required to make a call.")
         return None
         
+    if not phone_number.startswith('+'):
+        phone_number = f'+{phone_number}'
+        logger.info(f"Added '+' prefix to phone number for E.164 formatting: {phone_number}")
+        
     if MOCK_TWILIO:
         logger.info(f"[MOCK] Calling {phone_number}")
         logger.info(f"[MOCK] Message: {message}")
